@@ -79,4 +79,4 @@ while True:
         break
 
 
-#para interagir com o chat, primeiro deve entrar no ambiente virtual, onde da para instalar as bibliogtecas, usando o código "soucer .venv/bin/activate", depois basta entrar no terminal e digitar "python3 chatboot.py", assim se iniciará a conversa. Para sair, basta digitar "quint", "exit" e saíra da conversa.
+#para interagir com o chat, primeiro deve entrar no ambiente virtual, onde da para instalar as bibliogtecas, usando o código "source .venv/bin/activate", depois basta entrar no terminal e digitar "python3 chatboot.py", assim se iniciará a conversa. Para sair, basta digitar "quint", "exit" e saíra da conversa.
