@@ -52,7 +52,7 @@ def chatbot(state: State):
 #essa classe será reponsável por chamar as ferramentas de busca em urls para que p chatbot consiga buscar informações na internet
 class BasicToolNode:
     def __init__(self, tools: list) -> None:
-        self.tools_by_name = {tool.name: tool for tool in tool}
+        self.tools_by_name = {tool.name: tool for tool in tools}
 
     def __call__(self, inputs: dict):
         if messages := inputs.get("messages", []):
@@ -71,7 +71,7 @@ class BasicToolNode:
         
         return {"messages": outputs}
     
-tool_node = BasicToolNode(tool = [tool])
+tool_node = BasicToolNode(tools = [tool])
 
 
 def route_tools(state: State,):
