@@ -74,7 +74,7 @@ class BasicToolNode:
 tool_node = BasicToolNode(tool = [tool])
 
 
-def route_tool(state: State,):
+def route_tools(state: State,):
     if isinstance(state, list):
         ai_message = state[-1]
     elif messages := state.get("messages", []):
@@ -88,6 +88,11 @@ def route_tool(state: State,):
 
     
 #aqui terá como função principal construir as arestas entre os nós, ou seja, interligando cada ação/nó criados
+graph_builder.add_conditional_edges(
+    "chatbot",
+    route_tools,
+    {"tools": "tools", END: END},
+)
 graph_builder.add_node("chatbot", chatbot)
 graph_builder.add_node("tools", tool_node)
 graph_builder.add_edge(START, "chatbot")
