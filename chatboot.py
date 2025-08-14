@@ -17,6 +17,22 @@ load_dotenv()
 #aqui, será importado o ChatOpenai, ou seja, o modelo de linguagem da OpenAI será usado como base do nosso chatboot.
 from langchain_openai import ChatOpenAI
 
+#aqui, importamos o tavily, responsável por fazer a buscar em url sobre o iput que será colocado
+from langchain_tavily import TavilySearch
+
+import json
+
+from langchain_core.messages import ToolMessage
+
+#cria em variável com o tavily search, resposável por buscar em apenas 2 urls sobre os assunto colocado no input
+tool = TavilySearch(max_results=2)
+
+#aqui, apenas criamos uma lista de ferramentas, já que na classe abaixo, ele espera como resposta uma lista 
+tools = [tool]
+
+#aqui, será feita a busca pela a variável tool, que tem a tavily para buscar pelas url sobre "What is a dog?"
+tool.invoke("What is a dog?")
+
 #aqui, a função desse diconario é: com o typeddict, colocar valores nos atributos que serão colocaddos em state e a variaveel message terá um acumulo de mensagens sem nenhuma sobreescrever por conta da função add_messages.
 class State(TypedDict):
     messages: Annotated[str, add_messages] #aqui é resposaável por criar as mensagens e não deixar que sejam sobrepostas umas nas outras
@@ -26,13 +42,54 @@ graph_builder = StateGraph(State)
 #aqui é feito a "criação" de uma llm dentro do nosso código usando uma modleo de linguagem da OpenAI, mais especificamente o modelo "gpt-4o-mini".
 llm = ChatOpenAI(model_name="gpt-4o-mini")
 
+#aqui, definimos que a llm da openai vai usar os tools de busca em urls
+llm_with_tools = llm.bind_tools(tools)
+
 
 def chatbot(state: State):
-    return {"messages": [llm.invoke(state["messages"])]}
+    return {"messages": [llm_with_tools.invoke(state["messages"])]}
+
+#essa classe será reponsável por chamar as ferramentas de busca em urls para que p chatbot consiga buscar informações na internet
+class BasicToolNode:
+    def __init__(self, tools: list) -> None:
+        self.tools_by_name = {tool.name: tool for tool in tool}
+
+    def __call__(self, inputs: dict):
+        if messages := inputs.get("messages", []):
+            message = messages[-1]
+        else:
+            raise ValueError("no messages found in inputs")
+        outputs = []
+        for tool_call in message.tool_calls: 
+            tool_result = self.tools_by_name[tool_call["name"]].invoke(tool.call["args"])
+            outputs.append(ToolMessage(
+                content=json.dumps(tool_result),
+                    name=tool_call["name"],
+                    tool_call_id=tool_call["id"],
+            )
+            )
+        
+        return {"messages": outputs}
+    
+tool_node = BasicToolNode(tool = [tool])
 
 
+def route_tool(state: State,):
+    if isinstance(state, list):
+        ai_message = state[-1]
+    elif messages := state.get("messages", []):
+        ai_message = messages[-1]
+    else:
+        raise ValueError(f"No messages found in input state to tool_edge: {state}")
+    if hasattr(ai_message, "tool_calls") and len(ai_message.tool_calls) > 0:
+        return "tools"
+    return END
+
+
+    
 #aqui terá como função principal construir as arestas entre os nós, ou seja, interligando cada ação/nó criados
 graph_builder.add_node("chatbot", chatbot)
+graph_builder.add_node("tools", tool_node)
 graph_builder.add_edge(START, "chatbot")
 graph_builder.add_edge("chatbot", END)
 graph = graph_builder.compile()
@@ -67,7 +124,7 @@ while True:
     # Caso ocorra qualquer erro durante a execução (try/except sem tipo captura todos os erros)
     except:
         # Define uma entrada padrão (fallback) caso aconteça algum erro
-        user_input = "What do you know about LangGraph?"
+        user_input = "What is a dog?"
         
         # Mostra no console a mensagem do usuário padrão
         print("User: " + user_input)
@@ -79,4 +136,4 @@ while True:
         break
 
 
-#para interagir com o chat, primeiro deve entrar no ambiente virtual, onde da para instalar as bibliogtecas, usando o código "soucer .venv/bin/activate", depois basta entrar no terminal e digitar "python3 chatboot.py", assim se iniciará a conversa. Para sair, basta digitar "quint", "exit" e saíra da conversa.
+#para interagir com o chat, primeiro deve entrar no ambiente virtual, onde da para instalar as bibliogtecas, usando o código "source .venv/bin/activate", depois basta entrar no terminal e digitar "python3 chatboot.py", assim se iniciará a conversa. Para sair, basta digitar "quint", "exit" e saíra da conversa.
