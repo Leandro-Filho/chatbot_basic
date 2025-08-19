@@ -83,9 +83,11 @@ graph_builder.add_node("tools", tool_node)
 graph_builder.add_edge(START, "chatbot")
 graph_builder.add_edge("chatbot", END)
 
+#aqui, é onde a memória é adicionada ao grafo, ou seja, é onde o grafo irá salvar as mensagens e estados do chatboot
 memory = InMemorySaver()
 graph = graph_builder.compile(checkpointer=memory)
 
+# aqui, o config tem como função de colocar um id na conversa, fazendo com que ela seja guardada
 config = {"configurable": {"thread_id": "1"}}
 
 #aqui, é a função com um loop que fará o chat conversar com nós 
@@ -104,7 +106,7 @@ def stream_graph_updates(user_input: str):
 while True:
     try:
         # Pede a entrada do usuário no console
-        user_input = input("User: ")
+        user_input = input(" ")
         
         # Se o usuário digitar 'quit', 'exit' ou 'q', encerra o loop
         if user_input.lower() in ["quit", "exit", "q"]:
@@ -114,11 +116,9 @@ while True:
         # Caso contrário, chama a função para processar a entrada e responder
         stream_graph_updates(user_input)
 
-    # Caso ocorra qualquer erro durante a execução (try/except sem tipo captura todos os erros)
     except:
             user_input = user_input
 
-    # The config is the **second positional argument** to stream() or invoke()!
     events = graph.stream(
         {"messages": [{"role": "user", "content": user_input}]},
         config,
@@ -126,5 +126,3 @@ while True:
     )
     for event in events:
         event["messages"][-1].pretty_print()
-
-
