@@ -5,11 +5,10 @@ from langchain_openai import ChatOpenAI
 from langchain_tavily import TavilySearch
 from langchain_core.messages import ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.types import Command, interrupt
 from dotenv import load_dotenv
-load_dotenv()
-import json
-
+load_dotenv()   
 
 #aqui, a função desse dicionario é: com o typeddict, colocar valores nos atributos que serão colocaddos em state e a variavel message terá um acumulo de mensagens sem nenhuma sobreescrever por conta da função add_messages.
 class State(TypedDict):
@@ -38,55 +37,15 @@ llm_with_tools = llm.bind_tools(tools)
 def chatbot(state: State):
     return {"messages": [llm_with_tools.invoke(state["messages"])]}
 
-#essa classe será reponsável por chamar as ferramentas de busca em urls para que p chatbot consiga buscar informações na internet
-class BasicToolNode:
-    def __init__(self, tools: list) -> None:
-        self.tools_by_name = {tool.name: tool for tool in tools}
-
-    def __call__(self, inputs: dict):
-        if messages := inputs.get("messages", []):
-            message = messages[-1]
-        else:
-            raise ValueError("no messages found in inputs")
-        outputs = []
-        for tool_call in message.tool_calls: 
-            tool_result = self.tools_by_name[tool_call["name"]].invoke(tool_call["args"])
-
-            print("URLs retornadas pelo Tavily:")
-            for item in tool_result.get("results", []):
-                print("-", item.get("url"))
-
-            outputs.append(ToolMessage(
-                content=json.dumps(tool_result),
-                    name=tool_call["name"],
-                    tool_call_id=tool_call["id"],
-            )
-            )
-
-        return {"messages": outputs}
-    
-tool_node = BasicToolNode(tools = [tool])
-
-#essa função tem como objetivo dar ou não a tool para o chatboot, ou seja, se a tool for chamada, o nó "tools" será ativado, caso contrário, o chatboot irá direto para o END
-def route_tools(state: State,):
-    if isinstance(state, list):
-        ai_message = state[-1]
-    elif messages := state.get("messages", []):
-        ai_message = messages[-1]
-    else:
-        raise ValueError(f"No messages found in input state to tool_edge: {state}")
-    if hasattr(ai_message, "tool_calls") and len(ai_message.tool_calls) > 0:
-        return "tools"
-    return END
-
 #aqui terá como função principal construir as arestas entre os nós, ou seja, interligando cada ação/nó criados
+graph_builder.add_node("chatbot", chatbot)
+
+tool_node = ToolNode(tools=tools)
+graph_builder.add_node("tools", tool_node)
 graph_builder.add_conditional_edges(
     "chatbot",
-    route_tools,
-    {"tools": "tools", END: END},
+    tools_condition,
 )
-graph_builder.add_node("chatbot", chatbot)
-graph_builder.add_node("tools", tool_node)
 graph_builder.add_edge(START, "chatbot")
 graph_builder.add_edge("chatbot", END)
 
@@ -125,8 +84,9 @@ while True:
         stream_graph_updates(user_input)
 
     except:
-            user_input = user_input
-                  
+            user_input = "I need some expert guidance for building an AI agent. Could you request assistance for me?"
+            config = {"configurable": {"thread_id": "1"}}
+
     events = graph.stream(
         {"messages": [{"role": "user", "content": user_input}]},
         config,
@@ -134,3 +94,15 @@ while True:
     )
     for event in events:
         event["messages"][-1].pretty_print()
+    
+    human_response = (
+    "We, the experts are here to help! We'd recommend you check out LangGraph to build your agent."
+    " It's much more reliable and extensible than simple autonomous agents."
+    )
+
+    human_command = Command(resume={"data": human_response})
+
+    events = graph.stream(human_command, config, stream_mode="values")
+    for event in events:
+        if "messages" in event:
+            event["messages"][-1].pretty_print()
