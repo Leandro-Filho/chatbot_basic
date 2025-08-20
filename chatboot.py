@@ -5,15 +5,22 @@ from langchain_openai import ChatOpenAI
 from langchain_tavily import TavilySearch
 from langchain_core.messages import ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.types import Command, interrupt
 from dotenv import load_dotenv
 load_dotenv()
 import json
+
 
 #aqui, a função desse dicionario é: com o typeddict, colocar valores nos atributos que serão colocaddos em state e a variavel message terá um acumulo de mensagens sem nenhuma sobreescrever por conta da função add_messages.
 class State(TypedDict):
     messages: Annotated[list, add_messages] #aqui é resposaável por criar as mensagens e não deixar que sejam sobrepostas umas nas outras
 
 graph_builder = StateGraph(State)
+
+def human_assistance(query: str) -> str:
+    """Request assistance from a human."""
+    human_response = interrupt({"query": query})
+    return human_response["data"]
 
 #aqui é feito a "criação" de uma llm dentro do nosso código usando uma modleo de linguagem da OpenAI, mais especificamente o modelo "gpt-4o-mini".
 llm = ChatOpenAI(model_name="gpt-4o-mini")
@@ -22,7 +29,7 @@ llm = ChatOpenAI(model_name="gpt-4o-mini")
 tool = TavilySearch(max_results=2)
 
 #aqui, apenas criamos uma lista de ferramentas, já que na classe abaixo, ele espera como resposta uma lista 
-tools = [tool]
+tools = [tool, human_assistance]
 
 #aqui, definimos que a llm da openai vai usar os tools de busca em urls
 llm_with_tools = llm.bind_tools(tools)
@@ -105,9 +112,10 @@ def stream_graph_updates(user_input: str):
 # Loop infinito para interagir continuamente com o usuário
 while True:
     try:
+
         # Pede a entrada do usuário no console
-        user_input = input(" ")
-        
+        user_input = input("User: ")
+
         # Se o usuário digitar 'quit', 'exit' ou 'q', encerra o loop
         if user_input.lower() in ["quit", "exit", "q"]:
             print("Goodbye!")
@@ -118,7 +126,7 @@ while True:
 
     except:
             user_input = user_input
-
+                  
     events = graph.stream(
         {"messages": [{"role": "user", "content": user_input}]},
         config,
