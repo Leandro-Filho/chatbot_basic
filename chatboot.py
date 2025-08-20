@@ -76,8 +76,8 @@ while True:
         user_input = input("User: ")
 
         # Se o usuário digitar 'quit', 'exit' ou 'q', encerra o loop
-        if user_input.lower() in ["quit", "exit", "q"]:
-            print("Goodbye!")
+        if user_input.lower() in ["quit", "exit", "q", "tchau", "adeus", "bye", "obrigado pela ajuda"]:
+            print("Tchau! Até a próxima!")
             break
         
         # Caso contrário, chama a função para processar a entrada e responder
