@@ -84,7 +84,7 @@ while True:
         stream_graph_updates(user_input)
 
     except:
-            user_input = "I need some expert guidance for building an AI agent. Could you request assistance for me?"
+            user_input = user_input
             config = {"configurable": {"thread_id": "1"}}
 
     events = graph.stream(
